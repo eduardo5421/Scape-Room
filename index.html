@@ -182,11 +182,6 @@ color:var(--text);cursor:pointer;text-align:left;transition:all .25s;line-height
 .feedback.good{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);color:var(--success)}
 .feedback.bad{background:rgba(255,45,106,.06);border:1px solid rgba(255,45,106,.2);color:var(--accent2)}
 
-.btn-next{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;padding:12px 30px;
-background:linear-gradient(135deg,var(--accent),var(--accent3));color:#fff;border:none;border-radius:50px;
-cursor:pointer;margin-top:18px;display:none;letter-spacing:1px;transition:transform .2s;box-shadow:0 0 20px rgba(0,255,200,.2)}
-.btn-next:hover{transform:scale(1.05)}
-
 /* RESULTS */
 .results{display:none;text-align:center;padding:30px 20px;animation:fadeUp .8s}
 .results-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;position:relative;overflow:hidden}
@@ -222,6 +217,18 @@ background:transparent;border:2px solid var(--accent);color:var(--accent);border
 cursor:pointer;margin-top:20px;letter-spacing:1px;transition:all .2s}
 .btn-restart:hover{background:var(--accent);color:var(--bg)}
 
+/* ROOM TRANSITION */
+.room-transition{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(4,7,13,.92);
+z-index:1500;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.room-transition.show{display:flex;animation:fadeUp .4s}
+.room-transition .trans-icon{font-size:3rem;margin-bottom:12px;animation:unlockSpin .6s ease}
+.room-transition .trans-title{font-family:'Orbitron',sans-serif;font-size:clamp(1rem,3vw,1.4rem);font-weight:700;color:var(--success);margin-bottom:6px;text-shadow:0 0 30px rgba(0,255,136,.4)}
+.room-transition .trans-next{font-family:'Orbitron',sans-serif;font-size:clamp(.7rem,2vw,.9rem);color:var(--accent3);margin-top:8px;opacity:0;animation:fadeUp .4s .6s forwards}
+.room-transition .trans-bar{width:200px;height:4px;background:var(--border);border-radius:2px;margin-top:16px;overflow:hidden}
+.room-transition .trans-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:2px;animation:transLoad 2s linear forwards}
+@keyframes unlockSpin{0%{transform:rotateY(0deg) scale(.5);opacity:0}50%{transform:rotateY(180deg) scale(1.2)}100%{transform:rotateY(360deg) scale(1);opacity:1}}
+@keyframes transLoad{0%{width:0}100%{width:100%}}
+
 .game-over{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(4,7,13,.95);
 z-index:2000;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
 .game-over.show{display:flex;animation:fadeUp .6s}
@@ -244,6 +251,13 @@ z-index:2000;display:none;align-items:center;justify-content:center;flex-directi
 <div class="penalty-overlay" id="penaltyOverlay"></div>
 <div class="penalty-text" id="penaltyText"></div>
 <div class="time-lost" id="timeLost"></div>
+
+<div class="room-transition" id="roomTransition">
+<div class="trans-icon" id="transIcon">🔓</div>
+<div class="trans-title" id="transTitle">¡SALA DESBLOQUEADA!</div>
+<div class="trans-next" id="transNext">Preparando siguiente sala...</div>
+<div class="trans-bar"><div class="trans-bar-fill" id="transBarFill"></div></div>
+</div>
 
 <div class="game-over" id="gameOver">
 <h2>⏰ TIEMPO AGOTADO</h2>
@@ -274,13 +288,13 @@ z-index:2000;display:none;align-items:center;justify-content:center;flex-directi
 <div class="mode-card selected" id="modeFast" onclick="selectMode('fast')">
 <div class="mode-icon">⚡</div>
 <div class="mode-title">Modo Rápido</div>
-<div class="mode-desc">8 salas · 5 minutos<br>Penalización: -20s / -30s / -40s<br>Para reuniones cortas</div>
+<div class="mode-desc">8 salas · 4 minutos<br>Penalización: -25s / -40s / -55s<br>Para reuniones cortas</div>
 <div class="mode-badge fast">QUICK PLAY</div>
 </div>
 <div class="mode-card" id="modeFull" onclick="selectMode('full')">
 <div class="mode-icon">🔥</div>
 <div class="mode-title">Modo Completo</div>
-<div class="mode-desc">16 salas · 10 minutos<br>Penalización: -30s / -45s / -60s<br>Desafío máximo</div>
+<div class="mode-desc">16 salas · 8 minutos<br>Penalización: -35s / -55s / -70s<br>Desafío máximo</div>
 <div class="mode-badge full">HARDCORE</div>
 </div>
 </div>
@@ -311,7 +325,6 @@ z-index:2000;display:none;align-items:center;justify-content:center;flex-directi
 <div class="room-scenario" id="scenario"></div>
 <div class="options" id="options"></div>
 <div class="feedback" id="feedback"></div>
-<button class="btn-next" id="btnNext" onclick="nextRoom()">Siguiente Sala →</button>
 </div>
 </div>
 
@@ -555,8 +568,8 @@ badFb:"Ampliar ignora el deterioro. Mantener el mismo monto ignora la nueva deud
 
 // =================== MODE CONFIG ===================
 const MODES={
-fast:{time:300,penalties:[20,30,40],rooms:[0,2,4,6,7,8,10,11],label:'Rápido'},
-full:{time:600,penalties:[30,45,60],rooms:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],label:'Completo'}
+fast:{time:240,penalties:[25,40,55],rooms:[0,2,4,6,7,8,10,11],label:'Rápido'},
+full:{time:480,penalties:[35,55,70],rooms:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],label:'Completo'}
 };
 let selectedMode='fast';
 const catNames={credito:"Riesgo de Crédito",modelo:"Riesgo de Modelo",operacional:"Riesgo Operacional",fraude:"Fraude",admision:"Admisión y Seguimiento",mercado:"Riesgo de Mercado"};
@@ -660,7 +673,6 @@ document.getElementById('catTag').innerHTML='<span class="cat-tag '+r.catClass+'
 document.getElementById('progress').style.width=(current/activeRooms.length*100)+'%';
 document.getElementById('feedback').className='feedback';
 document.getElementById('feedback').style.display='none';
-document.getElementById('btnNext').style.display='none';
 document.getElementById('score').textContent=score;
 document.getElementById('totalAttempts').textContent=totalErrors;
 document.getElementById('lockIcon').textContent='🔒';
@@ -683,7 +695,7 @@ const r=activeRooms[current];
 
 if(i===r.correct){
 const elapsed=(Date.now()-roomStart)/1000;
-const bonus=(roomAttempts===0&&elapsed<15)?10:(roomAttempts===0&&elapsed<25)?5:0;
+const bonus=(roomAttempts===0&&elapsed<12)?10:(roomAttempts===0&&elapsed<20)?5:0;
 document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;});
 btn.classList.add('correct');
 score+=20+bonus;totalBonus+=bonus;
@@ -698,9 +710,16 @@ document.getElementById('score').textContent=score;
 const fb=document.getElementById('feedback');
 fb.className='feedback show good';
 fb.innerHTML='✓ '+(roomAttempts===0?'¡PERFECTO, a la primera! 🔥':'¡Sala desbloqueada!')+(bonus>0?' <strong>+'+bonus+' bonus</strong> — ':' — ')+r.goodFb;
-document.getElementById('btnNext').style.display='inline-block';
-if(current===activeRooms.length-1)document.getElementById('btnNext').textContent='🏆 Ver Resultados';
 updateStreakBar();
+
+// Auto-advance with transition
+setTimeout(()=>{
+if(current>=activeRooms.length-1){
+current++;clearInterval(timerInterval);showResults();
+}else{
+showTransition();
+}
+},1800);
 }else{
 roomAttempts++;totalErrors++;
 document.getElementById('totalAttempts').textContent=totalErrors;
@@ -724,18 +743,30 @@ if(timeLeft<=0){clearInterval(timerInterval);gameOver();}
 }
 }
 
+function showTransition(){
+const trans=document.getElementById('roomTransition');
+const nextIdx=current+1;
+const nextR=activeRooms[nextIdx];
+document.getElementById('transIcon').textContent='🔓';
+document.getElementById('transTitle').textContent='¡SALA '+(current+1)+' DESBLOQUEADA!';
+document.getElementById('transNext').textContent='Siguiente: Sala '+(nextIdx+1)+' — '+nextR.title;
+// Reset animation
+const bar=document.getElementById('transBarFill');
+bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad 2s linear forwards';
+trans.classList.add('show');
+setTimeout(()=>{
+trans.classList.remove('show');
+current++;
+loadRoom();
+},2200);
+}
+
 function showPenalty(s){
 const o=document.getElementById('penaltyOverlay'),t=document.getElementById('penaltyText'),tl=document.getElementById('timeLost');
 o.classList.add('flash');t.textContent='-'+s+'s';t.classList.add('show');
 tl.textContent='-'+s+' seg';tl.classList.remove('show');void tl.offsetWidth;tl.classList.add('show');
 setTimeout(()=>o.classList.remove('flash'),200);
 setTimeout(()=>t.classList.remove('show'),800);
-}
-
-function nextRoom(){
-current++;
-if(current>=activeRooms.length){clearInterval(timerInterval);showResults();return;}
-loadRoom();
 }
 
 function gameOver(){
@@ -785,6 +816,7 @@ document.getElementById('finalTip').innerHTML=tip;
 function restart(){
 document.getElementById('results').style.display='none';
 document.getElementById('gameOver').classList.remove('show');
+document.getElementById('roomTransition').classList.remove('show');
 document.getElementById('game').style.display='none';
 document.getElementById('intro').style.display='block';
 document.body.classList.remove('danger-zone');
