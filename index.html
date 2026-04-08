@@ -719,7 +719,7 @@ current++;clearInterval(timerInterval);showResults();
 }else{
 showTransition();
 }
-},1800);
+},800);
 }else{
 roomAttempts++;totalErrors++;
 document.getElementById('totalAttempts').textContent=totalErrors;
@@ -752,13 +752,13 @@ document.getElementById('transTitle').textContent='¡SALA '+(current+1)+' DESBLO
 document.getElementById('transNext').textContent='Siguiente: Sala '+(nextIdx+1)+' — '+nextR.title;
 // Reset animation
 const bar=document.getElementById('transBarFill');
-bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad 2s linear forwards';
+bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad 1.2s linear forwards';
 trans.classList.add('show');
 setTimeout(()=>{
 trans.classList.remove('show');
 current++;
 loadRoom();
-},2200);
+},1400);
 }
 
 function showPenalty(s){
