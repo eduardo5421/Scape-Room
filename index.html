@@ -712,14 +712,12 @@ fb.className='feedback show good';
 fb.innerHTML='✓ '+(roomAttempts===0?'¡PERFECTO, a la primera! 🔥':'¡Sala desbloqueada!')+(bonus>0?' <strong>+'+bonus+' bonus</strong> — ':' — ')+r.goodFb;
 updateStreakBar();
 
-// Auto-advance with transition
-setTimeout(()=>{
+// Auto-advance instantly
 if(current>=activeRooms.length-1){
 current++;clearInterval(timerInterval);showResults();
 }else{
 showTransition();
 }
-},800);
 }else{
 roomAttempts++;totalErrors++;
 document.getElementById('totalAttempts').textContent=totalErrors;
@@ -752,13 +750,13 @@ document.getElementById('transTitle').textContent='¡SALA '+(current+1)+' DESBLO
 document.getElementById('transNext').textContent='Siguiente: Sala '+(nextIdx+1)+' — '+nextR.title;
 // Reset animation
 const bar=document.getElementById('transBarFill');
-bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad 1.2s linear forwards';
+bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad .7s linear forwards';
 trans.classList.add('show');
 setTimeout(()=>{
 trans.classList.remove('show');
 current++;
 loadRoom();
-},1400);
+},800);
 }
 
 function showPenalty(s){
