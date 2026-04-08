@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escape Room: Gestión de Riesgos</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#04070d;--card:#0a1020;--accent:#00ffc8;--accent2:#ff2d6a;--accent3:#7c5cfc;
+--success:#00ff88;--text:#e2e8f0;--muted:#5a6a80;--border:#152040;--gold:#ffd700;
+--danger:#ff1744;--warning:#ff9100;
+}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body.shake{animation:bigShake .5s ease}
+body.danger-zone .glow-bg{background:radial-gradient(ellipse at 50% 0%,rgba(255,23,68,.15) 0%,transparent 60%),radial-gradient(ellipse at 30% 80%,rgba(124,92,252,.04) 0%,transparent 50%),var(--bg) !important}
+
+.scanline{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1000;
+background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,200,.008) 2px,rgba(0,255,200,.008) 4px)}
+.grid-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-2;
+background-image:linear-gradient(rgba(124,92,252,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(124,92,252,.03) 1px,transparent 1px);
+background-size:50px 50px}
+.glow-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;transition:background 1s;
+background:radial-gradient(ellipse at 20% 30%,rgba(0,255,200,.06) 0%,transparent 50%),
+radial-gradient(ellipse at 80% 70%,rgba(255,45,106,.04) 0%,transparent 50%),
+radial-gradient(ellipse at 50% 50%,rgba(124,92,252,.05) 0%,transparent 60%),var(--bg)}
+.particles{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;pointer-events:none}
+.particle{position:absolute;width:2px;height:2px;background:var(--accent);border-radius:50%;opacity:0;animation:float linear infinite}
+@keyframes float{0%{transform:translateY(100vh) scale(0);opacity:0}10%{opacity:.6}90%{opacity:.6}100%{transform:translateY(-10vh) scale(1);opacity:0}}
+
+.container{max-width:740px;margin:0 auto;padding:20px;position:relative;z-index:1}
+
+.cat-tag{display:inline-block;font-family:'Orbitron',sans-serif;font-size:.55rem;letter-spacing:2px;
+text-transform:uppercase;padding:5px 12px;border-radius:4px;margin-bottom:10px;position:relative;overflow:hidden}
+.cat-tag::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent);animation:tagShimmer 3s infinite}
+@keyframes tagShimmer{0%{left:-100%}100%{left:200%}}
+.cat-credito{background:rgba(0,255,200,.1);color:var(--accent);border:1px solid rgba(0,255,200,.3)}
+.cat-modelo{background:rgba(124,92,252,.1);color:var(--accent3);border:1px solid rgba(124,92,252,.3)}
+.cat-operacional{background:rgba(255,215,0,.1);color:var(--gold);border:1px solid rgba(255,215,0,.3)}
+.cat-fraude{background:rgba(255,45,106,.1);color:var(--accent2);border:1px solid rgba(255,45,106,.3)}
+.cat-admision{background:rgba(56,189,248,.1);color:#38bdf8;border:1px solid rgba(56,189,248,.3)}
+.cat-mercado{background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.3)}
+
+/* INTRO */
+.intro{text-align:center;padding:40px 20px;animation:fadeUp .8s ease}
+.vault-icon{width:100px;height:100px;margin:0 auto 20px;position:relative}
+.vault-icon .ring{position:absolute;border:2px solid var(--accent);border-radius:50%;opacity:.3}
+.vault-icon .ring:nth-child(1){inset:0;animation:spin 8s linear infinite}
+.vault-icon .ring:nth-child(2){inset:10px;border-color:var(--accent3);animation:spin 6s linear infinite reverse}
+.vault-icon .ring:nth-child(3){inset:20px;border-color:var(--accent2);animation:spin 4s linear infinite}
+.vault-icon .core{position:absolute;inset:30px;background:radial-gradient(circle,var(--accent),transparent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.intro h1{font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,5vw,2.6rem);font-weight:900;
+background:linear-gradient(135deg,var(--accent),var(--accent3),var(--accent2));
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;line-height:1.2}
+.intro .subtitle{font-family:'Space Mono',monospace;color:var(--muted);font-size:.7rem;margin-bottom:16px;letter-spacing:4px;text-transform:uppercase}
+.intro .desc{color:var(--muted);font-size:.78rem;line-height:1.8;max-width:520px;margin:0 auto 24px}
+
+.topics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.topic{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;transition:transform .2s,border-color .2s}
+.topic:hover{transform:translateY(-2px);border-color:var(--accent)}
+.topic .t-icon{font-size:1.4rem;margin-bottom:6px;filter:drop-shadow(0 0 8px rgba(0,255,200,.3))}
+.topic .t-name{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+
+/* MODE SELECT */
+.mode-select{display:flex;gap:12px;margin-bottom:20px;justify-content:center;flex-wrap:wrap}
+.mode-card{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:20px 18px;
+cursor:pointer;transition:all .3s;flex:1;max-width:280px;min-width:220px;text-align:left;position:relative;overflow:hidden}
+.mode-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;transition:background .3s}
+.mode-card:hover{border-color:var(--accent3);transform:translateY(-3px)}
+.mode-card.selected{border-color:var(--accent)}
+.mode-card.selected::before{background:linear-gradient(90deg,var(--accent),var(--accent3))}
+.mode-card .mode-icon{font-size:1.6rem;margin-bottom:8px}
+.mode-card .mode-title{font-family:'Orbitron',sans-serif;font-size:.85rem;font-weight:700;color:#fff;margin-bottom:4px}
+.mode-card .mode-desc{font-size:.65rem;color:var(--muted);line-height:1.6}
+.mode-card .mode-badge{font-family:'Orbitron',sans-serif;font-size:.5rem;padding:3px 8px;border-radius:3px;
+display:inline-block;margin-top:8px;letter-spacing:1px}
+.mode-card .mode-badge.fast{background:rgba(0,255,200,.1);color:var(--accent);border:1px solid rgba(0,255,200,.2)}
+.mode-card .mode-badge.full{background:rgba(255,45,106,.1);color:var(--accent2);border:1px solid rgba(255,45,106,.2)}
+
+.rules-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:left;margin-bottom:24px;position:relative;overflow:hidden}
+.rules-box::before{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent3),var(--accent2))}
+.rules-box h3{font-family:'Orbitron',sans-serif;font-size:.8rem;color:var(--accent);margin-bottom:12px}
+.rules-box ul{list-style:none;padding:0}
+.rules-box li{padding:6px 0;font-size:.7rem;color:var(--muted);padding-left:22px;position:relative;line-height:1.6}
+.rules-box li::before{content:'⚡';position:absolute;left:0;font-size:.7rem}
+.rules-box li.danger-rule{color:var(--accent2);font-weight:600}
+.rules-box li.danger-rule::before{content:'⚠️'}
+#rulesContent{transition:opacity .3s}
+
+.btn-start{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:700;padding:16px 52px;
+background:linear-gradient(135deg,var(--accent2),var(--accent3));color:#fff;border:none;border-radius:50px;
+cursor:pointer;letter-spacing:3px;text-transform:uppercase;position:relative;overflow:hidden;
+transition:transform .2s,box-shadow .2s;box-shadow:0 0 30px rgba(255,45,106,.2)}
+.btn-start:hover{transform:scale(1.06);box-shadow:0 0 50px rgba(255,45,106,.4)}
+.btn-start::after{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;
+background:linear-gradient(transparent,rgba(255,255,255,.08),transparent);transform:rotate(45deg);animation:shimmer 3s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%) rotate(45deg)}100%{transform:translateX(100%) rotate(45deg)}}
+
+/* GAME */
+.game{display:none;animation:fadeUp .6s ease}
+.mega-timer{text-align:center;margin-bottom:16px}
+.mega-timer .time-display{font-family:'Orbitron',sans-serif;font-size:clamp(2.5rem,8vw,4rem);font-weight:900;
+color:var(--accent);text-shadow:0 0 30px rgba(0,255,200,.4);transition:color .3s,text-shadow .3s;letter-spacing:4px}
+.mega-timer .time-display.warning{color:var(--warning);text-shadow:0 0 30px rgba(255,145,0,.5)}
+.mega-timer .time-display.critical{color:var(--danger);text-shadow:0 0 40px rgba(255,23,68,.6);animation:timerPulse 1s infinite}
+@keyframes timerPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.mega-timer .time-label{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:3px;margin-top:4px}
+
+.time-bar{height:6px;background:var(--border);border-radius:3px;margin-bottom:4px;overflow:hidden}
+.time-bar-fill{height:100%;border-radius:3px;transition:width 1s linear,background .5s;
+background:linear-gradient(90deg,var(--accent),var(--accent3))}
+.time-bar-fill.warning{background:linear-gradient(90deg,var(--warning),#ff6d00)}
+.time-bar-fill.critical{background:linear-gradient(90deg,var(--danger),#ff5252);animation:barPulse 1s infinite}
+@keyframes barPulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+.penalty-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,23,68,.15);
+pointer-events:none;z-index:999;opacity:0;transition:opacity .1s}
+.penalty-overlay.flash{opacity:1}
+.penalty-text{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;
+font-family:'Orbitron',sans-serif;font-size:clamp(1.5rem,5vw,2.5rem);font-weight:900;color:var(--danger);
+text-shadow:0 0 40px rgba(255,23,68,.8);opacity:0;pointer-events:none}
+.penalty-text.show{animation:penaltyPop .8s ease forwards}
+@keyframes penaltyPop{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0}20%{transform:translate(-50%,-50%) scale(1.2);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:0}}
+
+.time-lost{position:fixed;bottom:20px;right:20px;z-index:1002;font-family:'Orbitron',sans-serif;
+font-size:1rem;font-weight:900;color:var(--danger);opacity:0;pointer-events:none;text-shadow:0 0 20px rgba(255,23,68,.6)}
+.time-lost.show{animation:timeLostAnim 1.5s ease forwards}
+@keyframes timeLostAnim{0%{opacity:0;transform:translateY(0)}15%{opacity:1;transform:translateY(-10px)}100%{opacity:0;transform:translateY(-60px)}}
+
+.hud{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;
+background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:16px}
+.hud-item{text-align:center;flex:1}
+.hud-label{font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:2px}
+.hud-value{font-family:'Orbitron',sans-serif;font-size:.95rem;font-weight:700}
+.hud-value.room{color:var(--accent3)}.hud-value.score{color:var(--gold)}.hud-value.attempts{color:var(--accent2)}
+
+.streak-bar{display:flex;gap:5px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+.streak-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;
+justify-content:center;font-size:.55rem;transition:all .4s}
+.streak-dot.solved{border-color:var(--success);background:rgba(0,255,136,.1);color:var(--success);box-shadow:0 0 10px rgba(0,255,136,.2)}
+.streak-dot.failed{border-color:var(--accent2);background:rgba(255,45,106,.1);color:var(--accent2)}
+.streak-dot.current{border-color:var(--accent3);animation:dotPulse 2s infinite;box-shadow:0 0 12px rgba(124,92,252,.3)}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 8px rgba(124,92,252,.2)}50%{box-shadow:0 0 16px rgba(124,92,252,.5)}}
+
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:18px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3),var(--accent2));
+border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+.room-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px;
+position:relative;overflow:hidden;transition:border-color .3s}
+.room-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;
+background:linear-gradient(90deg,var(--accent),var(--accent3),var(--accent2))}
+.room-card.locked{border-color:var(--accent2);box-shadow:0 0 30px rgba(255,45,106,.1)}
+.room-card .lock-icon{position:absolute;top:12px;right:16px;font-size:1.2rem;opacity:.4}
+.room-number{font-family:'Orbitron',sans-serif;font-size:.6rem;color:var(--accent);letter-spacing:4px;text-transform:uppercase;margin-bottom:6px}
+.room-title{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:14px;color:#fff}
+.room-scenario{font-size:.78rem;color:var(--muted);line-height:1.8;margin-bottom:22px;
+padding:16px;background:rgba(0,255,200,.02);border-left:3px solid var(--accent);border-radius:0 8px 8px 0}
+
+.options{display:flex;flex-direction:column;gap:10px}
+.option-btn{font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:14px 16px;
+background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;
+color:var(--text);cursor:pointer;text-align:left;transition:all .25s;line-height:1.6;position:relative;overflow:hidden}
+.option-btn::before{content:'';position:absolute;top:0;left:0;width:0;height:100%;background:rgba(0,255,200,.03);transition:width .3s}
+.option-btn:hover{border-color:var(--accent);transform:translateX(6px)}
+.option-btn:hover::before{width:100%}
+.option-btn .opt-label{font-family:'Orbitron',sans-serif;font-size:.6rem;color:var(--accent3);display:inline-block;margin-right:8px;min-width:16px;font-weight:700}
+.option-btn.correct{border-color:var(--success);background:rgba(0,255,136,.08);animation:correctPulse .6s}
+.option-btn.correct .opt-label{color:var(--success)}
+.option-btn.wrong{border-color:var(--accent2);background:rgba(255,45,106,.06);animation:shake .5s}
+.option-btn.eliminated{opacity:.25;border-color:var(--border);text-decoration:line-through;cursor:default;transform:none !important}
+.option-btn.eliminated::before{display:none}
+.option-btn.eliminated:hover{border-color:var(--border);transform:none}
+.option-btn:disabled{cursor:default}.option-btn:disabled:hover{transform:none;border-color:var(--border)}
+@keyframes correctPulse{0%{box-shadow:0 0 0 0 rgba(0,255,136,.4)}100%{box-shadow:0 0 40px 10px rgba(0,255,136,0)}}
+
+.feedback{margin-top:14px;padding:16px;border-radius:10px;font-size:.75rem;line-height:1.7;display:none}
+.feedback.show{display:block;animation:fadeUp .4s}
+.feedback.good{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);color:var(--success)}
+.feedback.bad{background:rgba(255,45,106,.06);border:1px solid rgba(255,45,106,.2);color:var(--accent2)}
+
+/* RESULTS */
+.results{display:none;text-align:center;padding:30px 20px;animation:fadeUp .8s}
+.results-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;position:relative;overflow:hidden}
+.results-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent3),var(--accent2))}
+.results h2{font-family:'Orbitron',sans-serif;font-size:1.5rem;margin-bottom:6px;
+background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.results .escaped{font-size:.7rem;color:var(--success);margin-bottom:12px}
+.results .trapped{font-size:.7rem;color:var(--danger);margin-bottom:12px}
+.results .final-score{font-family:'Orbitron',sans-serif;font-size:3rem;font-weight:900;color:#fff;margin:12px 0}
+.results .final-score span{font-size:1rem;color:var(--muted)}
+.rank{font-size:.78rem;padding:8px 20px;border-radius:50px;display:inline-block;margin:8px 0 18px;font-weight:700;letter-spacing:1px}
+.rank.gold{background:linear-gradient(135deg,#ffd700,#ffab00);color:#000;box-shadow:0 0 20px rgba(255,215,0,.3)}
+.rank.silver{background:linear-gradient(135deg,#b0bec5,#78909c);color:#fff}
+.rank.bronze{background:linear-gradient(135deg,#ff9800,#e65100);color:#fff}
+.rank.iron{background:var(--border);color:var(--muted)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
+.stat-box{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:14px 8px}
+.stat-box .stat-val{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:700;color:var(--accent)}
+.stat-box .stat-lbl{font-size:.5rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+
+.category-breakdown{margin:16px 0;text-align:left;background:rgba(255,255,255,.01);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.cat-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);transition:background .2s}
+.cat-row:last-child{border-bottom:none}
+.cat-row:hover{background:rgba(255,255,255,.02)}
+.cat-row .cat-name{font-size:.7rem;color:var(--text)}
+.cat-row .cat-result{font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700}
+.cat-row .cat-result.pass{color:var(--success)}.cat-row .cat-result.fail{color:var(--accent2)}
+
+.tip{font-size:.73rem;color:var(--muted);line-height:1.7;margin-top:16px;padding:16px;background:rgba(124,92,252,.04);border-radius:10px;border:1px solid rgba(124,92,252,.15);text-align:left}
+.btn-restart{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;padding:13px 34px;
+background:transparent;border:2px solid var(--accent);color:var(--accent);border-radius:50px;
+cursor:pointer;margin-top:20px;letter-spacing:1px;transition:all .2s}
+.btn-restart:hover{background:var(--accent);color:var(--bg)}
+
+/* ROOM TRANSITION */
+.room-transition{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(4,7,13,.92);
+z-index:1500;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.room-transition.show{display:flex;animation:fadeUp .4s}
+.room-transition .trans-icon{font-size:3rem;margin-bottom:12px;animation:unlockSpin .6s ease}
+.room-transition .trans-title{font-family:'Orbitron',sans-serif;font-size:clamp(1rem,3vw,1.4rem);font-weight:700;color:var(--success);margin-bottom:6px;text-shadow:0 0 30px rgba(0,255,136,.4)}
+.room-transition .trans-next{font-family:'Orbitron',sans-serif;font-size:clamp(.7rem,2vw,.9rem);color:var(--accent3);margin-top:8px;opacity:0;animation:fadeUp .4s .6s forwards}
+.room-transition .trans-bar{width:200px;height:4px;background:var(--border);border-radius:2px;margin-top:16px;overflow:hidden}
+.room-transition .trans-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:2px;animation:transLoad 2s linear forwards}
+@keyframes unlockSpin{0%{transform:rotateY(0deg) scale(.5);opacity:0}50%{transform:rotateY(180deg) scale(1.2)}100%{transform:rotateY(360deg) scale(1);opacity:1}}
+@keyframes transLoad{0%{width:0}100%{width:100%}}
+
+.game-over{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(4,7,13,.95);
+z-index:2000;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+.game-over.show{display:flex;animation:fadeUp .6s}
+.game-over h2{font-family:'Orbitron',sans-serif;font-size:2rem;color:var(--danger);margin-bottom:10px;text-shadow:0 0 40px rgba(255,23,68,.5)}
+.game-over p{color:var(--muted);font-size:.85rem;margin-bottom:20px;line-height:1.6}
+.game-over .go-stats{font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--text);margin-bottom:24px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(10px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+@keyframes bigShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(6px)}45%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
+
+@media(max-width:520px){.topics{grid-template-columns:repeat(2,1fr)}.stats{grid-template-columns:repeat(2,1fr)}.streak-bar{gap:3px}.hud{flex-wrap:wrap;gap:4px}.mode-select{flex-direction:column;align-items:center}}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="grid-bg"></div>
+<div class="glow-bg"></div>
+<div class="particles" id="particles"></div>
+<div class="penalty-overlay" id="penaltyOverlay"></div>
+<div class="penalty-text" id="penaltyText"></div>
+<div class="time-lost" id="timeLost"></div>
+
+<div class="room-transition" id="roomTransition">
+<div class="trans-icon" id="transIcon">🔓</div>
+<div class="trans-title" id="transTitle">¡SALA DESBLOQUEADA!</div>
+<div class="trans-next" id="transNext">Preparando siguiente sala...</div>
+<div class="trans-bar"><div class="trans-bar-fill" id="transBarFill"></div></div>
+</div>
+
+<div class="game-over" id="gameOver">
+<h2>⏰ TIEMPO AGOTADO</h2>
+<p>No lograste escapar a tiempo.<br>El reloj te atrapó.</p>
+<div class="go-stats" id="goStats"></div>
+<button class="btn-restart" onclick="restart()" style="border-color:var(--accent2);color:var(--accent2)">Intentar de Nuevo</button>
+</div>
+
+<div class="container">
+
+<!-- INTRO -->
+<div class="intro" id="intro">
+<div class="vault-icon"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="core">🏦</div></div>
+<div class="subtitle">// Escape Room Virtual //</div>
+<h1>Gestión Integral de Riesgos</h1>
+<p class="desc">Elige tu desafío. No puedes avanzar sin resolver cada sala. Si fallas, el reloj te castiga. Demasiados errores y te quedarás atrapado.</p>
+
+<div class="topics">
+<div class="topic"><div class="t-icon">📊</div><div class="t-name">Riesgo Crédito</div></div>
+<div class="topic"><div class="t-icon">🤖</div><div class="t-name">Riesgo Modelo</div></div>
+<div class="topic"><div class="t-icon">⚙️</div><div class="t-name">Riesgo Operacional</div></div>
+<div class="topic"><div class="t-icon">🕵️</div><div class="t-name">Fraude</div></div>
+<div class="topic"><div class="t-icon">🔍</div><div class="t-name">Admisión y Seguim.</div></div>
+<div class="topic"><div class="t-icon">📈</div><div class="t-name">Riesgo Mercado</div></div>
+</div>
+
+<div class="mode-select">
+<div class="mode-card selected" id="modeFast" onclick="selectMode('fast')">
+<div class="mode-icon">⚡</div>
+<div class="mode-title">Modo Rápido</div>
+<div class="mode-desc">8 salas · 4 minutos<br>Penalización: -25s / -40s / -55s<br>Para reuniones cortas</div>
+<div class="mode-badge fast">QUICK PLAY</div>
+</div>
+<div class="mode-card" id="modeFull" onclick="selectMode('full')">
+<div class="mode-icon">🔥</div>
+<div class="mode-title">Modo Completo</div>
+<div class="mode-desc">16 salas · 8 minutos<br>Penalización: -35s / -55s / -70s<br>Desafío máximo</div>
+<div class="mode-badge full">HARDCORE</div>
+</div>
+</div>
+
+<div class="rules-box">
+<h3>🔒 Reglas del Escape</h3>
+<ul id="rulesContent"></ul>
+</div>
+<button class="btn-start" onclick="startGame()">⚡ Iniciar Escape ⚡</button>
+</div>
+
+<!-- GAME -->
+<div class="game" id="game">
+<div class="mega-timer"><div class="time-display" id="timer">5:00</div><div class="time-label">Tiempo restante</div></div>
+<div class="time-bar"><div class="time-bar-fill" id="timeBarFill" style="width:100%"></div></div>
+<div class="streak-bar" id="streakBar"></div>
+<div class="hud">
+<div class="hud-item"><div class="hud-label">Sala</div><div class="hud-value room" id="roomNum">1/8</div></div>
+<div class="hud-item"><div class="hud-label">Puntaje</div><div class="hud-value score" id="score">0</div></div>
+<div class="hud-item"><div class="hud-label">Errores</div><div class="hud-value attempts" id="totalAttempts">0</div></div>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+<div class="room-card" id="roomCard">
+<span class="lock-icon" id="lockIcon">🔒</span>
+<div id="catTag"></div>
+<div class="room-number" id="roomLabel"></div>
+<div class="room-title" id="roomTitle"></div>
+<div class="room-scenario" id="scenario"></div>
+<div class="options" id="options"></div>
+<div class="feedback" id="feedback"></div>
+</div>
+</div>
+
+<!-- RESULTS -->
+<div class="results" id="results">
+<div class="results-card">
+<h2 id="resultsTitle">Escape Completado</h2>
+<div id="escapedMsg"></div>
+<div class="final-score" id="finalScore">0 <span>pts</span></div>
+<div id="rankBadge"></div>
+<div class="stats">
+<div class="stat-box"><div class="stat-val" id="statFirstTry">0</div><div class="stat-lbl">A la primera</div></div>
+<div class="stat-box"><div class="stat-val" id="statAttempts">0</div><div class="stat-lbl">Errores total</div></div>
+<div class="stat-box"><div class="stat-val" id="statTime">0:00</div><div class="stat-lbl">Tiempo usado</div></div>
+<div class="stat-box"><div class="stat-val" id="statBonus">0</div><div class="stat-lbl">Bonus</div></div>
+</div>
+<div class="category-breakdown" id="catBreakdown"></div>
+<div class="tip" id="finalTip"></div>
+<button class="btn-restart" onclick="restart()">Jugar de Nuevo</button>
+</div>
+</div>
+
+</div>
+
+<script>
+// PARTICLES
+(function(){const p=document.getElementById('particles');for(let i=0;i<25;i++){const d=document.createElement('div');d.className='particle';d.style.left=Math.random()*100+'%';d.style.animationDuration=(8+Math.random()*12)+'s';d.style.animationDelay=(-Math.random()*20)+'s';d.style.width=d.style.height=(1+Math.random()*2)+'px';const c=['var(--accent)','var(--accent3)','var(--accent2)'];d.style.background=c[Math.floor(Math.random()*3)];p.appendChild(d);}})();
+
+// =================== ALL 16 QUESTIONS ===================
+const allRooms=[
+// 1 CRÉDITO — correct: C
+{cat:"credito",catLabel:"Riesgo de Crédito",catClass:"cat-credito",
+title:"Concentración de cartera",
+scenario:"El 40% de la exposición total de tu cartera está en construcción. El comité te pide opinión. ¿Qué recomiendas?",
+options:[
+{text:"Reducir agresivamente vendiendo cartera de construcción en mercado secundario y suspender toda originación inmediatamente hasta rebalancear el portafolio."},
+{text:"Subir la tasa y exigir garantías adicionales a todos los créditos del sector para compensar la concentración, manteniendo el volumen actual con mejor pricing."},
+{text:"Establecer límites de concentración sectorial, diversificar la originación progresivamente hacia otros sectores y monitorear indicadores adelantados mensualmente."},
+{text:"Mantener la estrategia actual dado que construcción tiene demanda sostenida, pero implementar stress testing trimestral para anticipar deterioros sectoriales."}
+],correct:2,
+goodFb:"Límites + diversificación progresiva + monitoreo es la mejor práctica. Vender agresivamente o solo repricing no resuelven el riesgo estructural.",
+badFb:"La concentración se gestiona con límites, diversificación gradual y monitoreo de indicadores adelantados. Medidas extremas o solo ajustar tasa no abordan el riesgo."},
+
+// 2 CRÉDITO — correct: A
+{cat:"credito",catLabel:"Riesgo de Crédito",catClass:"cat-credito",
+title:"Deterioro de garantías",
+scenario:"Hipotecario de S/ 500K garantizado con inmueble tasado en S/ 700K hace 2 años. Mercado inmobiliario cayó 30%. Cliente paga puntualmente. ¿Qué haces?",
+options:[
+{text:"Solicitar retasación, recalcular el ratio préstamo-valor con el nuevo valor, evaluar si se requiere garantía adicional o reducción de exposición, y actualizar la provisión según el ratio de cobertura."},
+{text:"Mantener sin cambios dado el cumplimiento puntual del cliente, programando retasación para el próximo ciclo regular de evaluación de garantías en 12 meses."},
+{text:"Contactar al cliente para renegociar: ofrecer reducción de tasa a cambio de un abono extraordinario que compense la caída del ratio préstamo-valor y reequilibre la exposición."},
+{text:"Reclasificar a Etapa 2 bajo la norma contable internacional por deterioro del colateral, incrementar provisiones al 100% del gap e inmediatamente restringir la línea disponible."}
+],correct:0,
+goodFb:"Retasar, recalcular el ratio préstamo-valor y evaluar cobertura es lo correcto. La Etapa 2 requiere evaluación del deudor, no solo del colateral.",
+badFb:"La garantía respalda la pérdida dado el incumplimiento. Retasar es obligatorio ante evidencia de deterioro. Pero la Etapa 2 no es automático por el colateral si el deudor está cumpliendo."},
+
+// 3 MODELO — correct: D
+{cat:"modelo",catLabel:"Riesgo de Modelo",catClass:"cat-modelo",
+title:"Scorecard desactualizado",
+scenario:"Scorecard de admisión con 4 años. Gini cayó de 0.45 a 0.28 y el índice de estabilidad poblacional es 0.32. Comercial presiona para seguir usándolo. ¿Qué haces?",
+options:[
+{text:"Bajar el punto de corte 20 puntos para compensar la pérdida de discriminación, monitoreando si el Gini se estabiliza en los próximos 2 trimestres con la nueva originación."},
+{text:"Apagar el modelo y migrar toda la originación a aprobación manual con analistas senior hasta tener el nuevo modelo, eliminando el riesgo de modelo por completo."},
+{text:"Solicitar recalibración rápida de los coeficientes con la última ventana de datos e implementar el modelo recalibrado en producción con monitoreo semanal intensivo."},
+{text:"Informar al comité que el índice de estabilidad poblacional mayor a 0.25 indica inestabilidad poblacional y Gini de 0.28 pierde discriminación. Activar plan de redevelopment con reglas de negocio como respaldo transitorio."}
+],correct:3,
+goodFb:"índice de estabilidad poblacional > 0.25 = población cambió. Gini 0.28 = baja discriminación. Escalar + redevelopment + reglas de respaldo es el protocolo correcto.",
+badFb:"Con índice de estabilidad poblacional de 0.32 la recalibración simple puede ser insuficiente porque la población cambió. Bajar corte aumenta el riesgo. Apagar sin alternativa paraliza la operación."},
+
+// 4 MODELO — correct: B
+{cat:"modelo",catLabel:"Riesgo de Modelo",catClass:"cat-modelo",
+title:"Validación independiente",
+scenario:"Validas un modelo de probabilidad de incumplimiento. Encuentras: misma muestra train/test, subestimación sistemática de defaults en backtesting, y variables excluidas sin documentar. ¿Tu dictamen?",
+options:[
+{text:"Aprobar condicionalmente: exigir separación de muestras en 30 días, documentar variables y programar backtesting trimestral de seguimiento para verificar la subestimación."},
+{text:"Rechazar el modelo. Exigir separación train/test o validación out-of-time, investigar la subestimación sistemática, y documentación completa de decisiones metodológicas antes de re-someter."},
+{text:"Rechazar la documentación pero aprobar el modelo con la condición de que desarrollo complete la documentación en paralelo a la implementación, sin retrasar el go-live."},
+{text:"Exigir únicamente la separación de muestras ya que es el hallazgo más crítico para evitar overfitting, y aceptar el resto como observaciones menores que no bloquean."}
+],correct:1,
+goodFb:"Tres fallas estructurales: overfitting, sesgo y falta de trazabilidad. No cumple la guía regulatoria de riesgo de modelo. Aprobación condicional no aplica con fallas de esta magnitud.",
+badFb:"Overfitting + sesgo + sin documentación son tres fallas críticas. Aprobar condicionalmente o en paralelo viola principios de model risk management."},
+
+// 5 OPERACIONAL — correct: C
+{cat:"operacional",catLabel:"Riesgo Operacional",catClass:"cat-operacional",
+title:"Fallo en el core bancario",
+scenario:"Core bancario cae viernes 4pm. Sin desembolsos ni pagos. Proveedor dice 6 horas. 200 desembolsos pendientes. Es quincena. ¿Qué priorizas?",
+options:[
+{text:"Coordinar con Tecnología para levantar los módulos de desembolso de forma independiente mientras el proveedor trabaja en la solución completa, priorizando los 200 desembolsos críticos."},
+{text:"Ejecutar los desembolsos por transferencia directa desde tesorería con aprobación verbal del jefe de operaciones, documentando en acta para regularizar el lunes a primera hora."},
+{text:"Activar el Plan de Continuidad de Negocio : comunicar a clientes afectados, habilitar procesos manuales de contingencia con controles duales requeridos, documentar el incidente y escalar al comité de riesgo operacional."},
+{text:"Esperar la restauración pero comunicar proactivamente a los 200 clientes que recibirán su desembolso el sábado temprano, ofreciendo compensación por la demora."}
+],correct:2,
+goodFb:"El Plan de Continuidad  existe para esto. Comunicación + contingencia con controles + documentación + escalamiento. No improvisar soluciones técnicas ni operar sin controles.",
+badFb:"Improvisar soluciones técnicas o desembolsar sin controles duales genera más riesgo. El Plan de Continuidad de Negocio con contingencia controlada y documentada es la respuesta."},
+
+// 6 OPERACIONAL — correct: A
+{cat:"operacional",catLabel:"Riesgo Operacional",catClass:"cat-operacional",
+title:"Error masivo de cargos",
+scenario:"Batch nocturno cobró doble cuota a 5,000 clientes. 7am lunes, quejas llegan. Eres responsable de operaciones. ¿Qué haces?",
+options:[
+{text:"Identificar los 5,000 afectados, ejecutar extorno masivo inmediato, comunicación proactiva antes de que escale, registrar evento de pérdida operacional y análisis de causa raíz del batch."},
+{text:"Bloquear el proceso batch, extornar a quienes ya reclamaron para reducir quejas inmediatas, y programar extorno del resto en las próximas 48 horas de forma ordenada."},
+{text:"Escalar a gerencia general y al regulador antes de cualquier acción correctiva, dado que un evento de 5,000 clientes requiere notificación regulatoria previa a la corrección."},
+{text:"Contactar al proveedor del batch para que revierta la transacción directamente en base de datos, evitando un extorno masivo que podría generar un segundo error operativo."}
+],correct:0,
+goodFb:"Acción proactiva total: identificar a todos, extorno masivo inmediato, comunicación anticipada y causa raíz. No esperar ni priorizar solo los reclamos.",
+badFb:"Los 5,000 fueron afectados, no solo los que reclaman. Extorno inmediato y total es obligatorio. Revertir en base de datos sin control operacional genera riesgo adicional."},
+
+// 7 FRAUDE — correct: D
+{cat:"fraude",catLabel:"Fraude",catClass:"cat-fraude",
+title:"Patrón sospechoso en admisión",
+scenario:"Un asesor tiene 98% de aprobación (promedio: 65%). Ingresos declarados casi idénticos justo sobre el mínimo. Verificaciones domiciliarias inconsistentes. ¿Qué haces?",
+options:[
+{text:"Implementar control adicional de verificación de ingresos para toda la agencia con documentación sustentatoria obligatoria, mitigando el riesgo sin señalar directamente al asesor."},
+{text:"Conversar con el asesor en privado para informarle de las inconsistencias y darle oportunidad de explicar y corregir su conducta antes de tomar medidas formales."},
+{text:"Reducir su límite de aprobación autónoma y reasignarlo a productos de menor riesgo mientras se observa si el patrón persiste durante los próximos 3 meses."},
+{text:"Alertar a prevención de fraude, suspender al asesor de originación inmediatamente, auditar todas sus solicitudes del período sospechoso y verificar si existe colusión con terceros."}
+],correct:3,
+goodFb:"Red flags de fraude interno requieren investigación formal sin alertar al sospechoso. Hablar con él le permite destruir evidencia.",
+badFb:"Hablar con el sospechoso o solo implementar controles generales no aborda el fraude en curso. Se requiere investigación formal inmediata sin alerta previa."},
+
+// 8 FRAUDE — correct: B
+{cat:"fraude",catLabel:"Fraude",catClass:"cat-fraude",
+title:"Suplantación de identidad",
+scenario:"Solicitud de S/ 80K. Match biométrico facial: 62% (umbral: 80%). documento de identidad luce legítimo. Asesor dice 'la foto del documento de identidad es vieja'. ¿Qué procede?",
+options:[
+{text:"Rechazar inmediatamente y reportar como fraude confirmado, dado que un match de 62% está muy por debajo del umbral y es evidencia suficiente de suplantación de identidad."},
+{text:"No aprobar hasta completar verificación adicional: consultar el registro nacional de identidad en línea, solicitar biometría dactilar como segundo factor y preguntas de validación cruzada con centrales de información."},
+{text:"Aprobar reduciendo monto a S/ 30,000 y clasificar como monitoreo reforzado durante los primeros 6 meses, acotando la exposición ante la posible suplantación."},
+{text:"Solicitar segundo documento de identidad vigente como pasaporte, y si coincide visualmente con la persona y el documento de identidad, proceder con la aprobación normal del crédito."}
+],correct:1,
+goodFb:"Match bajo umbral = alerta. Verificación adicional multi-factor obligatoria. Nunca omitir controles biométricos por presión comercial ni justificaciones del asesor.",
+badFb:"Rechazar sin investigar genera falsos positivos. Reducir monto no mitiga fraude. Verificación visual no reemplaza biometría formal."},
+
+// 9 ADMISIÓN — correct: A
+{cat:"admision",catLabel:"Admisión y Seguimiento",catClass:"cat-admision",
+title:"Sobreendeudamiento",
+scenario:"Cliente con score 720, 6 créditos vigentes, ratio cuota/ingreso en 38%. Con tu crédito llegaría a 52%. Política: máximo 40%. ¿Qué decides?",
+options:[
+{text:"Rechazar el monto solicitado pero ofrecer uno menor que mantenga el ratio dentro del 40%. La política existe para proteger al cliente y a la entidad del sobreendeudamiento sistémico."},
+{text:"Aprobar documentando una excepción justificada por el score de 720, ya que un buen historial crediticio demuestra capacidad de gestión de deuda superior al promedio del segmento."},
+{text:"Aprobar reestructurando el plazo a 60 meses para reducir la cuota mensual y que el ratio se mantenga técnicamente bajo el 40% con el monto original solicitado."},
+{text:"Escalar al comité de créditos para evaluación integral, ya que un score 720 con ratio al límite es zona gris que requiere análisis caso por caso más allá de la política."}
+],correct:0,
+goodFb:"Ratio cuota/ingreso es política dura. Score no sustituye capacidad de pago. Ajustar monto para cumplir el 40% es la solución correcta.",
+badFb:"Excepcionar por score ignora capacidad de pago real. Extender plazo es gaming de la política. Escalar no aplica cuando la política es clara: máximo 40%."},
+
+// 10 ADMISIÓN — correct: C
+{cat:"admision",catLabel:"Admisión y Seguimiento",catClass:"cat-admision",
+title:"Señales tempranas de deterioro",
+scenario:"Monitoreo micro y pequeña empresa: mora temprana sube de 3% a 7%, uso de revolving salta de 45% a 78%, ventas declaradas caen 20%. ¿Qué propones?",
+options:[
+{text:"Comunicación masiva de cobranza preventiva al segmento y reforzar call center para atender el incremento esperado de mora, preparando la gestión de cobro temprano proactivamente."},
+{text:"Provisionar el segmento al 100% y suspender toda originación micro y pequeña empresa hasta que los indicadores vuelvan a niveles normales, priorizando la protección del balance general."},
+{text:"Seguimiento reforzado: contacto preventivo personalizado, revisión individual de líneas revolving, restricción temporal de nuevas aprobaciones en el segmento y provisiones forward-looking Etapa 2 de la norma contable internacional."},
+{text:"Esperar al cierre del trimestre para datos consolidados más robustos antes de tomar decisiones, ya que un solo mes puede reflejar estacionalidad y no deterioro estructural."}
+],correct:2,
+goodFb:"Señales tempranas requieren acción preventiva integral. Etapa 2 de la norma contable internacional aplica cuando hay incremento significativo de riesgo crediticio.",
+badFb:"Solo cobranza no aborda el deterioro subyacente. Esperar consolida la pérdida. Provisionar al 100% es excesivo. El enfoque correcto es seguimiento reforzado multi-acción."},
+
+// 11 MERCADO — correct: D
+{cat:"mercado",catLabel:"Riesgo de Mercado",catClass:"cat-mercado",
+title:"Exposición cambiaria",
+scenario:"Cartera dólares 200M, depósitos dólares cubren 120M.el tipo de cambio subió 5% último mes,el Banco Central señala presiones alcistas. Gap: dólares 80M. ¿Qué recomiendas?",
+options:[
+{text:"Convertir progresivamente la cartera en dólares a soles, ofreciendo refinanciamiento en moneda local con condiciones preferenciales para reducir la exposición natural del balance."},
+{text:"Captar agresivamente depósitos en dólares con tasas por encima del mercado para cerrar el gap de fondeo, eliminando la necesidad de derivados que tienen costo adicional."},
+{text:"Mantener la posición actual dado que el gap está dentro de los límites regulatorios, programando revisión en el próximo comité Activos y Pasivos trimestral para evaluar ajustes."},
+{text:"Cerrar parcial o totalmente el gap con derivados (forwards/swaps), evaluar reducción gradual de originación en dólares y verificar que los límites Activos y Pasivos sigan siendo adecuados."}
+],correct:3,
+goodFb:"Derivados para cerrar gap + revisión de originación + validar límites Activos y Pasivos. No especular esperando normalización.",
+badFb:"Convertir cartera tiene riesgo legal/operativo. Captar depósitos caros erosiona margen. Esperar al trimestre con tendencia alcista es especular con el balance."},
+
+// 12 MERCADO — correct: B
+{cat:"mercado",catLabel:"Riesgo de Mercado",catClass:"cat-mercado",
+title:"Riesgo de tasa de interés",
+scenario:"Portafolio 70% bonos soberanos tasa fija a 10 años. Curva subió 150 puntos base en 3 meses. Duration 7.2 años. Pérdida a valor de mercado significativa. Tesorero quiere vender todo. ¿Tu análisis?",
+options:[
+{text:"Vender progresivamente en tramos para no impactar mercado, rotar a bonos de corta duration y realizar las pérdidas de forma ordenada minimizando el impacto."},
+{text:"Evaluar impacto según clasificación contable: si mantenidos al vencimiento sin deterioro crediticio, las pérdidas a valor de mercado no se realizan. Si fair value, analizar cobertura conswap de tasa de interés y rebalancear duration gradualmente."},
+{text:"No vender. Los bonos soberanos no tienen riesgo de crédito, la curva se normalizará, y al vencimiento recuperan par. Realizar pérdidas ahora destruye valor innecesariamente."},
+{text:"Ejecutar venta total inmediata. Duration 7.2 con curva en alza implica pérdidas crecientes, mejor realizar ahora que esperar deterioro mayor que comprometa más el portafolio."}
+],correct:1,
+goodFb:"La clasificación contable determina todo. mantenidos al vencimiento sin deterioro crediticio = no realizar pérdidas. valor razonable con cambios en resultados = evaluar cobertura. Duration 7.2 × 150 puntos base ≈ 10.8% a valor de mercado.",
+badFb:"Vender en pánico realiza pérdidas que en mantenidos al vencimiento no se materializan. Asumir normalización ignora riesgo si están a fair value. La clasificación contable es el punto de partida."},
+
+// ===== 4 ADDITIONAL QUESTIONS FOR FULL MODE =====
+
+// 13 CRÉDITO — correct: B
+{cat:"credito",catLabel:"Riesgo de Crédito",catClass:"cat-credito",
+title:"Migración de ratings",
+scenario:"La matriz de transición trimestral muestra que el 18% de los créditos triple B migraron a doble B y el 5% a B. Históricamente la migración descendente era 8% y 2%. El comité pregunta si hay que actuar. ¿Qué propones?",
+options:[
+{text:"Reclasificar todos los triple B actuales a Etapa 2 bajo la norma contable internacional de forma preventiva e incrementar provisiones del segmento completo al nivel de los doble B para cubrir la migración esperada."},
+{text:"Analizar los drivers de la migración acelerada, identificar los sub-segmentos con mayor deterioro, ajustar provisiones solo donde hay incremento significativo de riesgo, y revisar el apetito de riesgo del segmento."},
+{text:"Reportar la migración al comité como informativa pero no tomar acción, ya que un trimestre atípico no justifica cambios en la estrategia y los ratings pueden revertir el próximo período."},
+{text:"Endurecer inmediatamente los criterios de admisión para todo el segmento triple B, suspendiendo originación hasta que la matriz de transición se normalice a niveles históricos."}
+],correct:1,
+goodFb:"Correcto. Analizar drivers, segmentar el deterioro y ajustar provisiones donde corresponde. Actuar sobre todo el segmento o no actuar son respuestas desproporcionadas.",
+badFb:"Migración acelerada requiere investigar causas y segmentar. Reclasificar todo el segmento es excesivo. Ignorar un trimestre con el doble de migración es imprudente."},
+
+// 14 FRAUDE — correct: C
+{cat:"fraude",catLabel:"Fraude",catClass:"cat-fraude",
+title:"Fraude transaccional digital",
+scenario:"El monitoreo detecta 30 transferencias nocturnas (2-5am) desde cuentas de ahorro distintas hacia una misma cuenta recién aperturada. Montos justo bajo el umbral de alerta (S/ 9,900 c/u, umbral S/ 10,000). El titular de la cuenta receptora abrió la cuenta hace 3 días. ¿Qué acción tomas?",
+options:[
+{text:"Bloquear la cuenta receptora y devolver los fondos a las cuentas originadoras, dado que el patrón es evidentemente fraudulento y la acción inmediata protege a los clientes afectados."},
+{text:"Reportar como operación sospechosa a la Unidad de Inteligencia Financiera pero permitir que las transacciones continúen para no alertar al perpetrador y facilitar la investigación de las autoridades."},
+{text:"Bloquear la cuenta receptora preventivamente, alertar a la unidad de fraude, preservar la evidencia transaccional, reportar a la Unidad de Inteligencia Financiera como operación sospechosa y contactar a los titulares de las cuentas originadoras para verificar si autorizaron las transferencias."},
+{text:"Activar el protocolo de monitoreo reforzado: bajar temporalmente el umbral de alerta a S/ 5,000 para todas las cuentas nuevas con menos de 30 días de antigüedad y alertar al equipo de cumplimiento."}
+],correct:2,
+goodFb:"Correcto. Bloqueo preventivo + preservar evidencia + reporte a la Unidad de Inteligencia Financiera + verificar con titulares. Devolver sin investigar destruye evidencia. Solo reportar sin bloquear permite más daño.",
+badFb:"Devolver sin investigar pierde evidencia crucial. No bloquear permite que el fraude continúe. Solo ajustar umbrales no aborda el incidente actual."},
+
+// 15 OPERACIONAL — correct: A
+{cat:"operacional",catLabel:"Riesgo Operacional",catClass:"cat-operacional",
+title:"Fuga de datos de clientes",
+scenario:"Un analista reporta que un archivo con datos personales de 15,000 clientes (nombres, documento de identidad, saldos) fue enviado por error a un proveedor externo por email. El proveedor confirma que recibió el archivo hace 2 horas. ¿Qué haces primero?",
+options:[
+{text:"Contactar al proveedor para que elimine el archivo de forma verificable, notificar al área legal y al Oficial de Protección de Datos, registrar el incidente de seguridad, evaluar el alcance de la exposición y activar el protocolo de notificación de brecha de datos."},
+{text:"Solicitar al proveedor que firme un acuerdo de confidencialidad ad-hoc sobre los datos recibidos, documentar el incidente internamente y reforzar los controles de prevención de fuga de datos para prevenir futuros envíos."},
+{text:"Notificar inmediatamente al regulador dado que la ley de protección de datos exige comunicación en las primeras 24 horas, antes de contactar al proveedor o tomar cualquier otra acción."},
+{text:"Enviar un correo al proveedor solicitando la eliminación del archivo, documentar el incidente en el log de eventos operacionales y programar una revisión de controles de envío de información sensible."}
+],correct:0,
+goodFb:"Correcto. Contener (eliminar verificablemente) + notificar internamente (legal, Oficial de Protección de Datos) + registrar + evaluar alcance + protocolo de brecha es la secuencia correcta.",
+badFb:"Un acuerdo de confidencialidad no reemplaza la eliminación del dato. Notificar al regulador primero sin contener puede empeorar la exposición. Solo pedir eliminación por correo sin registrar formalmente es insuficiente."},
+
+// 16 ADMISIÓN — correct: D
+{cat:"admision",catLabel:"Admisión y Seguimiento",catClass:"cat-admision",
+title:"Renovación de línea revolving",
+scenario:"Cliente micro y pequeña empresa con línea revolving de S/ 200K vigente hace 3 años, uso promedio 60%. Solicita renovación con ampliación a S/ 350K. Su score bajó de 680 a 620, ventas declaradas cayeron 15%, y tiene un nuevo crédito vehicular. Pero siempre pagó puntualmente tu línea. ¿Qué decides?",
+options:[
+{text:"Renovar la línea al mismo monto de S/ 200K sin ampliación, dado que el cumplimiento puntual de 3 años demuestra capacidad de pago y no justifica reducción, pero la ampliación no procede."},
+{text:"Aprobar la ampliación a S/ 350K pero con tasa mayor que compense el deterioro del score, y condicionar a revisión en 6 meses donde si el score no mejora, la línea vuelve a S/ 200K."},
+{text:"Rechazar la renovación completamente. El deterioro del score, caída de ventas y nuevo endeudamiento son señales claras de que el cliente está entrando en dificultades financieras."},
+{text:"Renovar la línea vigente, pero reducir el monto a S/ 150K acorde al nuevo perfil de riesgo. Evaluar capacidad de pago real considerando el crédito vehicular, y programar seguimiento trimestral."}
+],correct:3,
+goodFb:"Renovar con ajuste al nuevo perfil de riesgo + considerar endeudamiento total + seguimiento reforzado. Ni ampliar con riesgo mayor ni rechazar a un cliente cumplido.",
+badFb:"Ampliar ignora el deterioro. Mantener el mismo monto ignora la nueva deuda vehicular. Rechazar a un cliente cumplido 3 años es excesivo. Ajustar al nuevo perfil es lo correcto."}
+];
+
+// =================== MODE CONFIG ===================
+const MODES={
+fast:{time:240,penalties:[25,40,55],rooms:[0,2,4,6,7,8,10,11],label:'Rápido'},
+full:{time:480,penalties:[35,55,70],rooms:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],label:'Completo'}
+};
+let selectedMode='fast';
+const catNames={credito:"Riesgo de Crédito",modelo:"Riesgo de Modelo",operacional:"Riesgo Operacional",fraude:"Fraude",admision:"Admisión y Seguimiento",mercado:"Riesgo de Mercado"};
+
+function selectMode(m){
+selectedMode=m;
+document.getElementById('modeFast').classList.toggle('selected',m==='fast');
+document.getElementById('modeFull').classList.toggle('selected',m==='full');
+updateRules();
+}
+
+function updateRules(){
+const cfg=MODES[selectedMode];
+const p=cfg.penalties;
+const totalR=cfg.rooms.length;
+const mins=Math.floor(cfg.time/60);
+document.getElementById('rulesContent').innerHTML=
+'<li>Tienes <strong style="color:var(--accent)">'+mins+' minutos</strong> para escapar de las <strong style="color:var(--accent)">'+totalR+' salas</strong></li>'+
+'<li>No puedes avanzar sin encontrar la respuesta correcta</li>'+
+'<li>Respuesta correcta al primer intento: <strong style="color:var(--success)">+20 pts + bonus velocidad</strong></li>'+
+'<li class="danger-rule">1er error: <strong>-'+p[0]+' segundos</strong></li>'+
+'<li class="danger-rule">2do error: <strong>-'+p[1]+' segundos</strong></li>'+
+'<li class="danger-rule">3er error: <strong>-'+p[2]+' segundos</strong> (solo queda 1 opción)</li>'+
+'<li class="danger-rule">Demasiados errores = tiempo agotado = ATRAPADO</li>'+
+'<li>Menos de '+(selectedMode==='fast'?'1 minuto':'2 minutos')+': zona de peligro 🔴</li>';
+}
+updateRules();
+
+// =================== GAME STATE ===================
+let activeRooms=[],current=0,score=0,firstTryCount=0,totalBonus=0,totalErrors=0,timeLeft=0,TOTAL_TIME=0,timerInterval=null,roomStart=0,roomAttempts=0,roomResults=[],penalties=[];
+let catScores={};
+
+function resetCatScores(){
+catScores={};
+Object.keys(catNames).forEach(k=>{catScores[k]={total:0,firstTry:0}});
+}
+
+function startGame(){
+const cfg=MODES[selectedMode];
+TOTAL_TIME=cfg.time;timeLeft=TOTAL_TIME;penalties=cfg.penalties;
+activeRooms=cfg.rooms.map(i=>allRooms[i]);
+current=0;score=0;firstTryCount=0;totalBonus=0;totalErrors=0;roomAttempts=0;roomResults=[];
+resetCatScores();
+
+document.getElementById('intro').style.display='none';
+document.getElementById('game').style.display='block';
+buildStreakBar();updateTimerDisplay();startTimer();loadRoom();
+}
+
+function buildStreakBar(){
+const bar=document.getElementById('streakBar');bar.innerHTML='';
+for(let i=0;i<activeRooms.length;i++){
+const d=document.createElement('div');d.className='streak-dot';d.id='dot-'+i;
+d.textContent=i+1;bar.appendChild(d);
+}
+}
+
+function updateStreakBar(){
+for(let i=0;i<activeRooms.length;i++){
+const d=document.getElementById('dot-'+i);
+d.className='streak-dot';
+if(i<current)d.className='streak-dot '+(roomResults[i]?'solved':'failed');
+else if(i===current)d.className='streak-dot current';
+}
+}
+
+function startTimer(){
+timerInterval=setInterval(()=>{
+timeLeft--;
+if(timeLeft<=0){timeLeft=0;clearInterval(timerInterval);gameOver();return;}
+updateTimerDisplay();
+},1000);
+}
+
+function updateTimerDisplay(){
+const m=Math.floor(timeLeft/60),s=timeLeft%60;
+const el=document.getElementById('timer');
+el.textContent=m+':'+(s<10?'0':'')+s;
+const pct=(timeLeft/TOTAL_TIME)*100;
+const bar=document.getElementById('timeBarFill');
+bar.style.width=pct+'%';
+
+const critThresh=selectedMode==='fast'?60:120;
+const warnThresh=selectedMode==='fast'?90:180;
+if(timeLeft<=critThresh){
+el.className='time-display critical';bar.className='time-bar-fill critical';document.body.classList.add('danger-zone');
+}else if(timeLeft<=warnThresh){
+el.className='time-display warning';bar.className='time-bar-fill warning';document.body.classList.remove('danger-zone');
+}else{
+el.className='time-display';bar.className='time-bar-fill';document.body.classList.remove('danger-zone');
+}
+}
+
+function loadRoom(){
+const r=activeRooms[current];roomAttempts=0;roomStart=Date.now();
+document.getElementById('roomNum').textContent=(current+1)+'/'+activeRooms.length;
+document.getElementById('roomLabel').textContent='Sala '+(current+1<10?'0':'')+(current+1);
+document.getElementById('roomTitle').textContent=r.title;
+document.getElementById('scenario').textContent=r.scenario;
+document.getElementById('catTag').innerHTML='<span class="cat-tag '+r.catClass+'">'+r.catLabel+'</span>';
+document.getElementById('progress').style.width=(current/activeRooms.length*100)+'%';
+document.getElementById('feedback').className='feedback';
+document.getElementById('feedback').style.display='none';
+document.getElementById('score').textContent=score;
+document.getElementById('totalAttempts').textContent=totalErrors;
+document.getElementById('lockIcon').textContent='🔒';
+document.getElementById('roomCard').classList.add('locked');
+updateStreakBar();
+
+const opts=document.getElementById('options');opts.innerHTML='';
+const labels=['A','B','C','D'];
+r.options.forEach((o,i)=>{
+const btn=document.createElement('button');btn.className='option-btn';
+btn.innerHTML='<span class="opt-label">'+labels[i]+'</span>'+o.text;
+btn.onclick=()=>selectOption(i,btn);
+opts.appendChild(btn);
+});
+}
+
+function selectOption(i,btn){
+if(btn.disabled||btn.classList.contains('eliminated'))return;
+const r=activeRooms[current];
+
+if(i===r.correct){
+const elapsed=(Date.now()-roomStart)/1000;
+const bonus=(roomAttempts===0&&elapsed<12)?10:(roomAttempts===0&&elapsed<20)?5:0;
+document.querySelectorAll('.option-btn').forEach(b=>{b.disabled=true;});
+btn.classList.add('correct');
+score+=20+bonus;totalBonus+=bonus;
+catScores[r.cat].total++;
+if(roomAttempts===0){catScores[r.cat].firstTry++;firstTryCount++;}
+roomResults.push(roomAttempts===0);
+
+document.getElementById('lockIcon').textContent='🔓';
+document.getElementById('roomCard').classList.remove('locked');
+document.getElementById('score').textContent=score;
+
+const fb=document.getElementById('feedback');
+fb.className='feedback show good';
+fb.innerHTML='✓ '+(roomAttempts===0?'¡PERFECTO, a la primera! 🔥':'¡Sala desbloqueada!')+(bonus>0?' <strong>+'+bonus+' bonus</strong> — ':' — ')+r.goodFb;
+updateStreakBar();
+
+// Auto-advance instantly
+if(current>=activeRooms.length-1){
+current++;clearInterval(timerInterval);showResults();
+}else{
+showTransition();
+}
+}else{
+roomAttempts++;totalErrors++;
+document.getElementById('totalAttempts').textContent=totalErrors;
+btn.classList.add('wrong');
+setTimeout(()=>{btn.classList.remove('wrong');btn.classList.add('eliminated');btn.disabled=true;},500);
+
+const pen=penalties[Math.min(roomAttempts-1,penalties.length-1)];
+timeLeft=Math.max(0,timeLeft-pen);
+score=Math.max(0,score-5);
+document.getElementById('score').textContent=score;
+updateTimerDisplay();
+
+showPenalty(pen);
+document.body.classList.add('shake');setTimeout(()=>document.body.classList.remove('shake'),500);
+
+const fb=document.getElementById('feedback');
+fb.className='feedback show bad';
+const rem=4-roomAttempts-1;
+fb.innerHTML='✗ ¡INCORRECTO! <strong>-'+pen+'s</strong>'+(rem>0?' — Quedan '+rem+' opciones.':' — Solo queda UNA...');
+if(timeLeft<=0){clearInterval(timerInterval);gameOver();}
+}
+}
+
+function showTransition(){
+const trans=document.getElementById('roomTransition');
+const nextIdx=current+1;
+const nextR=activeRooms[nextIdx];
+document.getElementById('transIcon').textContent='🔓';
+document.getElementById('transTitle').textContent='¡SALA '+(current+1)+' DESBLOQUEADA!';
+document.getElementById('transNext').textContent='Siguiente: Sala '+(nextIdx+1)+' — '+nextR.title;
+// Reset animation
+const bar=document.getElementById('transBarFill');
+bar.style.animation='none';void bar.offsetWidth;bar.style.animation='transLoad 2.5s linear forwards';
+trans.classList.add('show');
+setTimeout(()=>{
+trans.classList.remove('show');
+current++;
+loadRoom();
+},2800);
+}
+
+function showPenalty(s){
+const o=document.getElementById('penaltyOverlay'),t=document.getElementById('penaltyText'),tl=document.getElementById('timeLost');
+o.classList.add('flash');t.textContent='-'+s+'s';t.classList.add('show');
+tl.textContent='-'+s+' seg';tl.classList.remove('show');void tl.offsetWidth;tl.classList.add('show');
+setTimeout(()=>o.classList.remove('flash'),200);
+setTimeout(()=>t.classList.remove('show'),800);
+}
+
+function gameOver(){
+const go=document.getElementById('gameOver');go.classList.add('show');
+document.getElementById('goStats').innerHTML='Salas completadas: <strong style="color:var(--accent)">'+current+'</strong>/'+activeRooms.length+'<br>Puntaje: <strong>'+score+'</strong><br>Errores: <strong style="color:var(--accent2)">'+totalErrors+'</strong>';
+}
+
+function showResults(){
+document.getElementById('game').style.display='none';
+document.getElementById('results').style.display='block';
+const escaped=current>=activeRooms.length;
+document.getElementById('resultsTitle').textContent=escaped?'¡ESCAPASTE! 🎉':'Resultados';
+document.getElementById('escapedMsg').innerHTML=escaped?'<div class="escaped">Lograste salir de las '+activeRooms.length+' salas — Modo '+MODES[selectedMode].label+'</div>':'<div class="trapped">No completaste todas las salas</div>';
+document.getElementById('finalScore').innerHTML=score+' <span>pts</span>';
+document.getElementById('statFirstTry').textContent=firstTryCount+'/'+activeRooms.length;
+document.getElementById('statAttempts').textContent=totalErrors;
+const used=TOTAL_TIME-timeLeft;const m=Math.floor(used/60),s=used%60;
+document.getElementById('statTime').textContent=m+':'+(s<10?'0':'')+s;
+document.getElementById('statBonus').textContent='+'+totalBonus;
+document.getElementById('progress').style.width='100%';
+
+let rank,cls;
+const maxScore=activeRooms.length*30;
+const pct=score/maxScore;
+if(pct>=.85&&firstTryCount>=activeRooms.length*.8){rank='🏆 Chief Risk Officer';cls='gold';}
+else if(pct>=.6){rank='⭐ Risk Manager Senior';cls='silver';}
+else if(pct>=.35){rank='📋 Analista de Riesgos';cls='bronze';}
+else{rank='📝 Practicante';cls='iron';}
+document.getElementById('rankBadge').innerHTML='<div class="rank '+cls+'">'+rank+'</div>';
+
+let bd='';
+Object.keys(catScores).forEach(k=>{
+const c=catScores[k];if(c.total===0)return;
+const pass=c.firstTry===c.total;
+bd+='<div class="cat-row"><span class="cat-name">'+catNames[k]+'</span><span class="cat-result '+(pass?'pass':'fail')+'">'+c.firstTry+'/'+c.total+(pass?' ✓ Perfecto':' — reintentos')+'</span></div>';
+});
+document.getElementById('catBreakdown').innerHTML=bd;
+
+const weak=Object.keys(catScores).filter(k=>catScores[k].total>0&&catScores[k].firstTry<catScores[k].total);
+let tip='';
+if(weak.length===0&&escaped)tip='🔥 Dominio total. Todas a la primera. Listo para liderar gestión integral de riesgos.';
+else if(weak.length===0)tip='Buen conocimiento. Mejorar velocidad para maximizar bonus.';
+else tip='📚 Reforzar: <strong>'+weak.map(k=>catNames[k]).join(', ')+'</strong>. Revisa los conceptos de estas áreas.';
+document.getElementById('finalTip').innerHTML=tip;
+}
+
+function restart(){
+document.getElementById('results').style.display='none';
+document.getElementById('gameOver').classList.remove('show');
+document.getElementById('roomTransition').classList.remove('show');
+document.getElementById('game').style.display='none';
+document.getElementById('intro').style.display='block';
+document.body.classList.remove('danger-zone');
+}
+</script>
+</body>
+</html>
